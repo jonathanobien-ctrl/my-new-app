@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Task Manager — React (Single File)</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1020;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.085);
+      --stroke: rgba(255,255,255,.10);
+      --stroke2: rgba(255,255,255,.16);
+      --text:#EAF0FF;
+      --muted: rgba(234,240,255,.68);
+      --muted2: rgba(234,240,255,.52);
+      --good:#39d98a;
+      --warn:#ffcc66;
+      --bad:#ff5c7a;
+      --accent1:#7C5CFF;
+      --accent2:#28D7FF;
+      --shadow: 0 20px 70px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% 10%, rgba(124,92,255,.25), transparent 60%),
+        radial-gradient(900px 700px at 90% 20%, rgba(40,215,255,.18), transparent 60%),
+        radial-gradient(900px 700px at 50% 90%, rgba(255,92,122,.10), transparent 65%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* Subtle noise overlay */
+    body:before{
+      content:"";
+      position:fixed; inset:0;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+      pointer-events:none;
+      opacity:.28;
+    }
+
+    .app-wrap{
+      max-width:1200px;
+      margin: 0 auto;
+      padding: 22px 16px 40px;
+    }
+
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom: 16px;
+    }
+
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      min-width: 260px;
+    }
+    .logo{
+      width:44px; height:44px;
+      border-radius: 14px;
+      background:
+        radial-gradient(20px 20px at 30% 30%, rgba(255,255,255,.6), transparent 60%),
+        linear-gradient(135deg, var(--accent1), var(--accent2));
+      box-shadow: 0 10px 30px rgba(124,92,255,.25);
+      border: 1px solid rgba(255,255,255,.18);
+    }
+    .brand h1{
+      font-size: 16px;
+      line-height: 1.1;
+      margin:0;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+    .brand p{
+      margin:2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      background: linear-gradient(180deg, var(--accent2), var(--accent1));
+      box-shadow: 0 0 0 4px rgba(40,215,255,.12);
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 330px 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 920px){
+      .layout{ grid-template-columns: 1fr; }
+      .brand{ min-width: 0; }
+    }
+
+    .panel{
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.045));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position: relative;
+    }
+    .panel:after{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(600px 220px at 20% 0%, rgba(124,92,255,.22), transparent 55%),
+                  radial-gradient(600px 220px at 80% 0%, rgba(40,215,255,.18), transparent 55%);
+      pointer-events:none;
+      opacity:.55;
+    }
+    .panel > *{ position: relative; z-index:1; }
+
+    .panel-head{
+      padding: 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .panel-head h2{
+      margin:0;
+      font-size: 13px;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      color: rgba(234,240,255,.78);
+      font-weight: 800;
+    }
+
+    .panel-body{ padding: 16px; }
+
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat{
+      border-radius: 16px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      padding: 12px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .stat .k{
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .stat .v{
+      margin-top: 6px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
+
+    .filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .chip{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: rgba(234,240,255,.82);
+      border-radius: 999px;
+      padding: 10px 12px;
+      cursor:pointer;
+      user-select:none;
+      font-size: 12px;
+      font-weight: 700;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .chip:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.20); }
+    .chip.active{
+      background: linear-gradient(135deg, rgba(124,92,255,.28), rgba(40,215,255,.18));
+      border-color: rgba(255,255,255,.24);
+    }
+    .chip .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 22px;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(234,240,255,.78);
+    }
+
+    .search{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-bottom: 12px;
+    }
+
+    .input{
+      width:100%;
+      border-radius: 14px;
+      padding: 12px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline:none;
+      font-weight: 600;
+      letter-spacing: .1px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .input::placeholder{ color: rgba(234,240,255,.38); font-weight: 600; }
+    .input:focus{ border-color: rgba(40,215,255,.35); box-shadow: 0 0 0 4px rgba(40,215,255,.10), inset 0 1px 0 rgba(255,255,255,.06); }
+
+    .btn{
+      border:none;
+      cursor:pointer;
+      user-select:none;
+      font-weight: 900;
+      letter-spacing:.2px;
+      border-radius: 14px;
+      padding: 12px 12px;
+      color: var(--text);
+      transition: transform .12s ease, filter .12s ease;
+      box-shadow: 0 18px 40px rgba(0,0,0,.25);
+      white-space: nowrap;
+    }
+    .btn:hover{ transform: translateY(-1px); filter: brightness(1.04); }
+    .btn:active{ transform: translateY(0px); filter: brightness(.98); }
+
+    .btn-primary{
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      border: 1px solid rgba(255,255,255,.18);
+    }
+    .btn-ghost{
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.12);
+      color: rgba(234,240,255,.85);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .form-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .hint{
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 10px;
+      line-height: 1.35;
+    }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .item{
+      display:flex;
+      gap: 12px;
+      align-items:flex-start;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.045);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .item:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+    }
+
+    .check{
+      width: 22px; height: 22px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.22);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      flex: 0 0 auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .check svg{ width:14px; height:14px; opacity:0; transform: scale(.8); transition: .12s ease; }
+    .check.done{
+      background: rgba(57,217,138,.12);
+      border-color: rgba(57,217,138,.35);
+    }
+    .check.done svg{ opacity:1; transform: scale(1); }
+
+    .content{ flex: 1 1 auto; min-width: 0; }
+    .title{
+      font-weight: 800;
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.25;
+      letter-spacing: .1px;
+      word-break: break-word;
+    }
+    .title.done{
+      text-decoration: line-through;
+      color: rgba(234,240,255,.52);
+    }
+    .meta{
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(234,240,255,.55);
+      display:flex;
+      gap: 10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .tag{
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      font-weight: 800;
+      font-size: 11px;
+      color: rgba(234,240,255,.72);
+    }
+    .tag.good{ border-color: rgba(57,217,138,.28); background: rgba(57,217,138,.10); }
+    .tag.warn{ border-color: rgba(255,204,102,.26); background: rgba(255,204,102,.10); }
+    .tag.bad{ border-color: rgba(255,92,122,.28); background: rgba(255,92,122,.10); }
+
+    .actions{
+      display:flex;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .icon-btn{
+      width: 38px; height: 38px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .icon-btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.20); background: rgba(255,255,255,.07); }
+    .icon-btn svg{ width: 18px; height: 18px; opacity: .9; }
+
+    .empty{
+      border-radius: 16px;
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(255,255,255,.035);
+      padding: 18px;
+      color: rgba(234,240,255,.68);
+      line-height: 1.45;
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35);
+      color: rgba(234,240,255,.85);
+      box-shadow: 0 18px 45px rgba(0,0,0,.45);
+      backdrop-filter: blur(10px);
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* Reduce motion support */
+    @media (prefers-reduced-motion: reduce){
+      *{ transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <!-- React (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel so we can write JSX in one file -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    // -------- Helpers
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const formatDate = (ms) => {
+      const d = new Date(ms);
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    };
+    const uid = () => (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(16).slice(2));
+
+    const STORAGE_KEY = "tm_tasks_v1";
+
+    function loadTasks(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      }catch{
+        return [];
+      }
+    }
+
+    function saveTasks(tasks){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    }
+
+    // -------- Small UI bits (icons)
+    function IconCheck(){
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M20 7L10 17l-5-5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+    function IconTrash(){
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 7h16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M10 11v7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M14 11v7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M6 7l1 14h10l1-14" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+          <path d="M9 7V4h6v3" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+    function IconEdit(){
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 20h9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+    function IconSpark(){
+      return (
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 2l1.2 4.5L18 8l-4.8 1.5L12 14l-1.2-4.5L6 8l4.8-1.5L12 2Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+          <path d="M19 13l.7 2.6L22 16l-2.3.4L19 19l-.7-2.6L16 16l2.3-.4L19 13Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
+
+    // -------- App
+    function App(){
+      const [tasks, setTasks] = useState(() => {
+        const initial = loadTasks();
+        return initial.length ? initial : [
+          { id: uid(), title: "Add your first task (try editing me)", done: false, createdAt: Date.now() - 1000 * 60 * 60 },
+          { id: uid(), title: "Mark tasks as completed", done: true, createdAt: Date.now() - 1000 * 60 * 35 },
+          { id: uid(), title: "Use filters + search to find things fast", done: false, createdAt: Date.now() - 1000 * 60 * 15 },
+        ];
+      });
+
+      const [filter, setFilter] = useState("all"); // all | active | done
+      const [query, setQuery] = useState("");
+      const [toast, setToast] = useState("");
+
+      // persist
+      useEffect(() => { saveTasks(tasks); }, [tasks]);
+
+      // toast helper
+      const toastTimer = useRef(null);
+      const showToast = (msg) => {
+        setToast(msg);
+        clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(""), 1600);
+      };
+
+      // stats
+      const stats = useMemo(() => {
+        const total = tasks.length;
+        const done = tasks.filter(t => t.done).length;
+        const active = total - done;
+        return { total, active, done };
+      }, [tasks]);
+
+      // derived visible tasks
+      const visible = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return tasks
+          .filter(t => {
+            if(filter === "active") return !t.done;
+            if(filter === "done") return t.done;
+            return true;
+          })
+          .filter(t => !q ? true : t.title.toLowerCase().includes(q))
+          .sort((a,b) => b.createdAt - a.createdAt);
+      }, [tasks, filter, query]);
+
+      // actions
+      const addTask = (title) => {
+        const clean = title.trim();
+        if(!clean) return;
+        setTasks(prev => [{ id: uid(), title: clean, done:false, createdAt: Date.now() }, ...prev]);
+        showToast("Task added ✅");
+      };
+
+      const toggleTask = (id) => {
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+      };
+
+      const deleteTask = (id) => {
+        setTasks(prev => prev.filter(t => t.id !== id));
+        showToast("Task deleted 🗑️");
+      };
+
+      const updateTask = (id, title) => {
+        const clean = title.trim();
+        if(!clean) return;
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, title: clean } : t));
+        showToast("Task updated ✨");
+      };
+
+      const clearCompleted = () => {
+        const count = tasks.filter(t => t.done).length;
+        if(count === 0) return showToast("No completed tasks.");
+        setTasks(prev => prev.filter(t => !t.done));
+        showToast(`Cleared ${count} completed`);
+      };
+
+      const resetDemo = () => {
+        const demo = [
+          { id: uid(), title: "Plan your day in 10 minutes", done:false, createdAt: Date.now() - 1000*60*45 },
+          { id: uid(), title: "Finish one important task first", done:false, createdAt: Date.now() - 1000*60*20 },
+          { id: uid(), title: "Take a short break (you earned it)", done:true, createdAt: Date.now() - 1000*60*10 },
+        ];
+        setTasks(demo);
+        setFilter("all");
+        setQuery("");
+        showToast("Reset to demo tasks");
+      };
+
+      return (
+        <div className="app-wrap">
+          <div className="topbar">
+            <div className="brand">
+              <div className="logo" aria-hidden="true"></div>
+              <div>
+                <h1>Task Manager</h1>
+                <p>React basics in one file — state, props, events, localStorage</p>
+              </div>
+            </div>
+
+            <div className="pill" title="Built with React 18 in a single HTML file">
+              <span className="dot"></span>
+              <span><strong style={{color:"rgba(234,240,255,.92)"}}>React</strong> • single-file app</span>
+            </div>
+          </div>
+
+          <div className="layout">
+            {/* Sidebar */}
+            <aside className="panel">
+              <div className="panel-head">
+                <h2>Overview</h2>
+                <button className="btn btn-ghost" onClick={resetDemo} title="Reset tasks to demo set">
+                  Reset demo
+                </button>
+              </div>
+
+              <div className="panel-body">
+                <div className="stats">
+                  <div className="stat">
+                    <div className="k">Total</div>
+                    <div className="v">{stats.total}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="k">Active</div>
+                    <div className="v">{stats.active}</div>
+                  </div>
+                  <div className="stat">
+                    <div className="k">Completed</div>
+                    <div className="v">{stats.done}</div>
+                  </div>
+                </div>
+
+                <div style={{display:"flex", alignItems:"center", gap:10, margin:"10px 0 10px"}}>
+                  <div style={{display:"flex", alignItems:"center", gap:10, flex:1}}>
+                    <div style={{display:"flex", alignItems:"center", gap:8, color:"rgba(234,240,255,.78)", fontWeight:900}}>
+                      <IconSpark/>
+                      <span style={{fontSize:13}}>Filters</span>
+                    </div>
+                  </div>
+                  <button className="btn btn-ghost" onClick={clearCompleted} title="Remove all completed tasks">
+                    Clear done
+                  </button>
+                </div>
+
+                <div className="filters">
+                  <div className={"chip " + (filter==="all" ? "active" : "")} onClick={() => setFilter("all")}>
+                    All <span className="badge">{stats.total}</span>
+                  </div>
+                  <div className={"chip " + (filter==="active" ? "active" : "")} onClick={() => setFilter("active")}>
+                    Active <span className="badge">{stats.active}</span>
+                  </div>
+                  <div className={"chip " + (filter==="done" ? "active" : "")} onClick={() => setFilter("done")}>
+                    Completed <span className="badge">{stats.done}</span>
+                  </div>
+                </div>
+
+                <div className="hint">
+                  Tip: This whole app is React basics:
+                  <strong> state</strong> (tasks), <strong>props</strong> (passing data),
+                  <strong> events</strong> (onClick/onSubmit), and <strong>effects</strong> (localStorage).
+                </div>
+              </div>
+            </aside>
+
+            {/* Main */}
+            <main className="panel">
+              <div className="panel-head">
+                <h2>Your Tasks</h2>
+                <span style={{color:"rgba(234,240,255,.65)", fontSize:12, fontWeight:800}}>
+                  Showing <span style={{color:"rgba(234,240,255,.92)"}}>{visible.length}</span>
+                </span>
+              </div>
+
+              <div className="panel-body">
+                <TaskComposer onAdd={addTask} />
+
+                <div style={{height:12}}></div>
+
+                <div className="search">
+                  <input
+                    className="input"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search tasks…"
+                  />
+                  <button className="btn btn-ghost" onClick={() => setQuery("")} title="Clear search">
+                    Clear
+                  </button>
+                </div>
+
+                {visible.length === 0 ? (
+                  <div className="empty">
+                    <strong>No tasks found.</strong>
+                    <div style={{marginTop:6, color:"rgba(234,240,255,.62)"}}>
+                      Try changing filters, clearing search, or add a new task.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="list">
+                    {visible.map(t => (
+                      <TaskItem
+                        key={t.id}
+                        task={t}
+                        onToggle={() => toggleTask(t.id)}
+                        onDelete={() => deleteTask(t.id)}
+                        onUpdate={(title) => updateTask(t.id, title)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
+
+          <div className={"toast " + (toast ? "show" : "")}>
+            {toast}
+          </div>
+        </div>
+      );
+    }
+
+    function TaskComposer({ onAdd }){
+      const [title, setTitle] = useState("");
+      const inputRef = useRef(null);
+
+      const submit = (e) => {
+        e.preventDefault();
+        onAdd(title);
+        setTitle("");
+        inputRef.current?.focus();
+      };
+
+      return (
+        <form onSubmit={submit} className="form-row">
+          <input
+            ref={inputRef}
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Add a task… (e.g., Call vendor, finish report, study React)"
+          />
+          <button className="btn btn-primary" type="submit">Add</button>
+        </form>
+      );
+    }
+
+    function TaskItem({ task, onToggle, onDelete, onUpdate }){
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(task.title);
+      const editRef = useRef(null);
+
+      useEffect(() => {
+        setDraft(task.title);
+      }, [task.title]);
+
+      useEffect(() => {
+        if(editing) setTimeout(() => editRef.current?.focus(), 0);
+      }, [editing]);
+
+      const save = () => {
+        onUpdate(draft);
+        setEditing(false);
+      };
+
+      const priorityTag = (() => {
+        // Fun little "design" touch: auto-tag based on keywords
+        const t = task.title.toLowerCase();
+        if(t.includes("urgent") || t.includes("asap")) return { label:"Urgent", cls:"bad" };
+        if(t.includes("today") || t.includes("now")) return { label:"Today", cls:"warn" };
+        if(t.includes("idea") || t.includes("plan")) return { label:"Idea", cls:"good" };
+        return null;
+      })();
+
+      return (
+        <div className="item">
+          <div className={"check " + (task.done ? "done" : "")} onClick={onToggle} title="Toggle done">
+            <IconCheck/>
+          </div>
+
+          <div className="content">
+            {!editing ? (
+              <>
+                <p className={"title " + (task.done ? "done" : "")}>{task.title}</p>
+                <div className="meta">
+                  <span className="tag">{task.done ? "Completed" : "Active"}</span>
+                  {priorityTag && <span className={"tag " + priorityTag.cls}>{priorityTag.label}</span>}
+                  <span>Created: {formatDate(task.createdAt)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  ref={editRef}
+                  className="input"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if(e.key === "Enter") save();
+                    if(e.key === "Escape") { setDraft(task.title); setEditing(false); }
+                  }}
+                />
+                <div className="hint">
+                  Enter = save • Esc = cancel
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="actions">
+            {!editing ? (
+              <button className="icon-btn" onClick={() => setEditing(true)} title="Edit">
+                <IconEdit/>
+              </button>
+            ) : (
+              <button className="icon-btn" onClick={save} title="Save">
+                <IconCheck/>
+              </button>
+            )}
+            <button className="icon-btn" onClick={onDelete} title="Delete">
+              <IconTrash/>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
